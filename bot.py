@@ -4,6 +4,9 @@ import sqlite3
 import logging
 from datetime import datetime, timezone
 import requests
+import threading
+from fastapi import FastAPI
+import uvicorn
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
@@ -108,7 +111,16 @@ def handle_updates():
         else:
             tg("sendMessage", {"chat_id": chat_id, "text": "Comando não reconhecido. Envie /ajuda."})
 
-def main():
+app = FastAPI(title="Bot IA Day Trade Telegram", description="Somente sinais; nenhuma ordem é enviada.")
+
+@app.get("/")
+def health():
+    return {"status": "ok", "modo": "somente_sinais", "ordens_ativas": False,
+            "telegram_configurado": bool(TOKEN and CHAT_ID),
+            "ctrader_conectado": False,
+            "mensagem": "API do bot online. Integração cTrader ainda precisa ser autorizada."}
+
+def polling_loop():
     init_db()
     logging.info("Bot iniciado em modo somente sinais; ordens desativadas.")
     if TOKEN and CHAT_ID:
@@ -117,11 +129,13 @@ def main():
         try:
             handle_updates()
             time.sleep(POLL_SECONDS)
-        except KeyboardInterrupt:
-            break
         except Exception:
-            logging.exception("Erro no loop principal")
+            logging.exception("Erro no loop Telegram")
             time.sleep(5)
 
+@app.on_event("startup")
+def startup():
+    threading.Thread(target=polling_loop, daemon=True).start()
+
 if __name__ == "__main__":
-    main()
+    uvicorn.run("bot:app", host="0.0.0.0", port=int(os.getenv("PORT", "8000")))
