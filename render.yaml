@@ -1,0 +1,18 @@
+services:
+  - type: worker
+    name: bot-ia-daytrade-telegram
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: CTRADER_CLIENT_ID
+        sync: false
+      - key: CTRADER_CLIENT_SECRET
+        sync: false
+      - key: CTRADER_ENV
+        value: demo
